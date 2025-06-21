@@ -26,10 +26,10 @@ selected_origin = None
 selected_destination = None
 
 
+
+# Para poner el icono a la aplicacion, sin depender del archivo independiente
 def resource_path(relative_path):
-    """Obtiene la ruta absoluta al recurso, works for dev and for PyInstaller"""
     try:
-        # PyInstaller crea una carpeta temporal y guarda la ruta en _MEIPASS
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
@@ -37,11 +37,13 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
+# Cambios de color en hover
 def apply_hover_effect(widget, bg_normal, bg_hover):
     widget.bind("<Enter>", lambda e: widget.config(bg=bg_hover))
     widget.bind("<Leave>", lambda e: widget.config(bg=bg_normal))
 
 
+#Selección de carpetas y asignación de sus variables
 def select_dir(dir_type):
     global selected_origin, selected_destination
     selected = filedialog.askdirectory(title="Selecciona una carpeta")
@@ -57,7 +59,7 @@ def select_dir(dir_type):
         destination_tag.config(text=f"📂 Destino:\n{selected}")
     update_move_button_state()
 
-
+#función principal, par mover o copiar los archivos según move_check
 def move_files():
     if not selected_origin or not selected_destination:
         messagebox.showwarning("Advertencia", "Selecciona ambas carpetas.")
@@ -114,6 +116,8 @@ def move_files():
     threading.Thread(target=mover).start()
 
 
+
+# Para habilitar o inhabilitar el botón de inicio de migración (copiar o mover), para evitar el dialogo de "No seleccionado"
 def update_move_button_state():
     if selected_origin and selected_destination:
         move_btn.config(state=tk.NORMAL, bg="#ffc107")
@@ -128,6 +132,7 @@ ventana = tk.Tk()
 ventana.title("EZFiles")
 ventana.geometry("700x400")
 ventana.configure(bg="#f8f9fa")
+ventana.minsize(700, 400)
 
 # icono
 ventana.iconbitmap(resource_path('icono.ico'))
