@@ -89,7 +89,7 @@ menu_tema = tk.Menu(menubar, tearoff=0)
 menu_tema.add_radiobutton(
     label="Default", variable=tema_seleccionado, value="Default")
 menu_tema.add_radiobutton(
-    label="Dark", variable=tema_seleccionado, value="Dark")
+    label="Dark (Próximamente)", variable=tema_seleccionado, value="Dark")
 preferencias_menu.add_cascade(menu=menu_tema, label="Tema")
 
 # Agregar menus a la barra
@@ -127,14 +127,14 @@ if __name__ == "__main__":
                 "label": "📁 Organizar Archivos",
                 "command": lambda x: selectMenuOption(x)
             },
-            {
-                "label": "📁 Mover Archivos",
-                "command": lambda x: selectMenuOption(x)
-            },
-            {
-                "label": "📁 Extraer y aplanar",
-                "command": lambda x: selectMenuOption(x)
-            },
+            # {
+            #     "label": "📁 Mover Archivos",
+            #     "command": lambda x: selectMenuOption(x)
+            # },
+            # {
+            #     "label": "📁 Extraer y aplanar",
+            #     "command": lambda x: selectMenuOption(x)
+            # },
 
         ])
     menu.render()
