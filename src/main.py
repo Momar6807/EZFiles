@@ -153,7 +153,6 @@ def selectMenuOption(option):
             page = MoveFiles(rightside)
             page.render()
 
-
 if __name__ == "__main__":
     # Ejecutar mostrar menu
     menu = Sidebar(
@@ -161,12 +160,9 @@ if __name__ == "__main__":
         options=[
             {
                 "label": "📁 Organizar Archivos",
-                "command": lambda x: selectMenuOption(x)
+                "command": lambda x: selectMenuOption(x),
+                "page": "mover"
             },
-            # {
-            #     "label": "📁 Mover Archivos",
-            #     "command": lambda x: selectMenuOption(x)
-            # },
             # {
             #     "label": "📁 Extraer y aplanar",
             #     "command": lambda x: selectMenuOption(x)

@@ -1,7 +1,4 @@
-"""
-En este archivo se crean los componentes de la vista principal del menú de la aplicación, con funciones para su comportamiento, y otra para renderizarlos
-"""
-
+import subprocess
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import sys
@@ -11,14 +8,8 @@ import threading
 from components.roundedbutton import RoundedButton as Button
 from components.label import Label
 from components.checkbutton import Checkbutton
+from components.tooltip import Tooltip
 import json
-
-
-# Variables globales
-selected_origin = None
-selected_destination = None
-include_folders = False
-include_categories = True
 
 
 class MoveFiles:
@@ -27,6 +18,13 @@ class MoveFiles:
         # Obtener categorias guardadas desde el json de saved_categories.json
         # revisar si existe el archivo
         exists = os.path.exists("saved_categories.json")
+
+        # Variables globales
+        self.selected_origin = None
+        self.selected_destination = None
+        self.include_folders = tk.BooleanVar(value=False)
+        self.include_categories = tk.BooleanVar(value=True)
+        self.open_when_done = tk.BooleanVar(value=False)
         if exists:
             with open("saved_categories.json", "r") as f:
                 self.categories = json.load(f)
@@ -57,7 +55,6 @@ class MoveFiles:
 
         # Selección de carpetas y asignación de sus variables
         def select_dir(dir_type):
-            global selected_origin, selected_destination
             selected = filedialog.askdirectory(title="Selecciona una carpeta")
             if not selected:
                 messagebox.showinfo(
@@ -65,10 +62,10 @@ class MoveFiles:
                 return
 
             if dir_type == "origin":
-                selected_origin = selected
+                self.selected_origin = selected
                 origin_tag.config(text=f"📁 Origen:\n{selected}")
             elif dir_type == "destination":
-                selected_destination = selected
+                self.selected_destination = selected
                 destination_tag.config(text=f"📂 Destino:\n{selected}")
 
         def recursive_file_search(base_path, current_folder):
@@ -85,23 +82,23 @@ class MoveFiles:
         # función principal, par mover o copiar los archivos según move_check
 
         def move_files():
-            if not selected_origin or not selected_destination:
+            if not self.selected_origin or not self.selected_destination:
                 messagebox.showwarning(
                     "Advertencia", "Selecciona ambas carpetas.")
                 return
 
             archivos = []
-            for f in os.listdir(selected_origin):
-                full_path = os.path.join(selected_origin, f)
+            for f in os.listdir(self.selected_origin):
+                full_path = os.path.join(self.selected_origin, f)
                 if os.path.isfile(full_path):
                     archivos.append(full_path)
 
-            if include_categories:
-                for item in os.listdir(selected_origin):
-                    full_item_path = os.path.join(selected_origin, item)
+            if self.include_categories.get():
+                for item in os.listdir(self.selected_origin):
+                    full_item_path = os.path.join(self.selected_origin, item)
                     if os.path.isdir(full_item_path):
                         archivos.extend(recursive_file_search(
-                            selected_origin, item))
+                            self.selected_origin, item))
 
             total = len(archivos)
 
@@ -146,12 +143,12 @@ class MoveFiles:
                 nonlocal total
                 errors = []
                 omit_errors = False
-                if include_categories:
+                if self.include_categories.get():
                     groupedFiles = groupFilesByCategory()
                     for category_name in groupedFiles.keys():
                         for source_path in groupedFiles[category_name]:
                             final_destination = os.path.join(
-                                selected_destination, category_name)
+                                self.selected_destination, category_name)
 
                             if not os.path.isdir(final_destination):
                                 os.makedirs(final_destination)
@@ -170,7 +167,7 @@ class MoveFiles:
                             except Exception as e:
                                 if not omit_errors:
                                     omit_errors = messagebox.askyesno(
-                                        "Error al mover/copiar", f"No se pudo procesar {os.path.basename(source_path)}{" por ser un archivo duplicado" if "are the same file" in str(e) else ": " + str(e)}\n\n¿Deseas omitir los errores y continuar? (Solo se migrarán los archivos que no tengan errores)")
+                                        "Error al mover/copiar", f"No se pudo procesar {os.path.basename(source_path)}{" por ser un archivo duplicado" if "are the same file" in str(e) else ": " + str(e)}\n\n¿Deseas omitir los errores y continuar? (Solo se organizarán los archivos que no tengan errores)")
                                 total -= 1
                                 if "are the same file" in str(e):
                                     errors.append(
@@ -200,7 +197,7 @@ class MoveFiles:
                     for extension_name in groupedFiles.keys():
                         for source_path in groupedFiles[extension_name]:
                             final_destination = os.path.join(
-                                selected_destination, extension_name.upper().replace(".", ""))
+                                self.selected_destination, extension_name.upper().replace(".", ""))
 
                             if not os.path.isdir(final_destination):
                                 os.makedirs(final_destination)
@@ -219,7 +216,7 @@ class MoveFiles:
                             except Exception as e:
                                 if not omit_errors:
                                     omit_errors = messagebox.askyesno(
-                                        "Error al mover/copiar", f"No se pudo procesar {os.path.basename(source_path)}{" por ser un archivo duplicado" if "are the same file" in str(e) else ": " + str(e)}\n\n¿Deseas omitir los errores y continuar? (Solo se migrarán los archivos que no tengan errores)")
+                                        "Error al mover/copiar", f"No se pudo procesar {os.path.basename(source_path)}{" por ser un archivo duplicado" if "are the same file" in str(e) else ": " + str(e)}\n\n¿Deseas omitir los errores y continuar? (Solo se organizarán los archivos que no tengan errores)")
                                 total -= 1
                                 if "are the same file" in str(e):
                                     errors.append(
@@ -241,21 +238,43 @@ class MoveFiles:
 
                     progress_label.config(text="✔ Movimiento completado")
                 print(errors)
+                if (self.open_when_done.get()):
+                    subprocess.Popen(["explorer", self.selected_destination])
             threading.Thread(target=mover).start()
+
+        def populate_categories_treeview(widget):
+            for category in self.categories:
+                widget.insert(
+                    "",
+                    "end",
+                    text=category,
+                    iid=category
+                )
+        
+        def populate_extensions_treeview(widget, category):
+            # Limpiar el treeview de extensiones antes de poblarlo
+            for i in widget.get_children():
+                widget.delete(i)
+            
+            if category in self.categories:
+                for extension in self.categories[category]:
+                    widget.insert(
+                            "", # Parent item
+                            "end",
+                            text=extension,
+                            iid=extension
+                    )
+        
+        # Función para manejar la selección de una categoría
+        def on_category_select(event):
+            selected_item = categories_treeview.selection()
+            if selected_item:
+                category_name = categories_treeview.item(selected_item[0])['text']
+                populate_extensions_treeview(extensions_treeview, category_name)
+
+
         ############## Creacion de los componentes ################
         move_check = tk.BooleanVar()
-        # checkbox_move = ttk.Checkbutton(
-        #     self.frame,
-        #     text="Mover Archivos",
-        #     variable=move_check,
-        #     onvalue=True,
-        #     offvalue=False,
-        #     style="Bootstrap.TCheckbutton",
-        # )
-        checkbox_move = Checkbutton(self.frame,
-                                    text="Mover Archivos",
-                                    variable=move_check,
-                                    onvalue=True, offvalue=False)
 
         # Heading
         heading = tk.Label(self.frame, text="Organizar Archivos", font=("Segoe UI Emoji", 16, "bold"),
@@ -280,13 +299,78 @@ class MoveFiles:
         destination_btn.grid(row=0, column=1, padx=10)
 
         # Botón mover
-        move_btn = Button(button_frame, text="🚀 Migrar Archivos",
+        move_btn = Button(button_frame, text="🚀 Comenzar",
                           command=move_files,
                           variant="warning")
         move_btn.grid(row=0, column=2, padx=10)
 
-        checkbox_move.pack(pady=10)
+        # Contenedor para configuraciones (checkboxes y treeviews)
+        config_container = tk.Frame(self.frame, bg="#FBFEF9")
+        config_container.pack(pady=10, padx=10, fill="both", expand=True) # expand y fill para que use el espacio disponible
+        
+        # Configurar las columnas para que distribuyan el espacio
+        config_container.grid_columnconfigure(0, weight=1) # Checkboxes
+        config_container.grid_columnconfigure(1, weight=2) # Treeview de categorías
+        config_container.grid_columnconfigure(2, weight=2) # Treeview de extensiones
 
+        # Frame para los checkboxes (columna 0)
+        checkbox_frame = tk.Frame(config_container, bg="#FBFEF9")
+        checkbox_frame.grid(row=0, column=0, sticky="nw", padx=10, pady=5) # sticky para alinear a la esquina superior izquierda
+
+        # Checkbox para incluir categorías
+        checkbox_include_categories = Checkbutton(
+            checkbox_frame,
+            text="Incluir categorías",
+            variable=self.include_categories,
+            onvalue=True,
+            offvalue=False,
+        )
+        checkbox_include_categories.pack(anchor="w") # anchor "w" para alinear a la izquierda
+        Tooltip(
+            checkbox_include_categories,
+            "Si seleccionas esta opción, se organizarán los archivos en carpetas por categoría."
+            "\n\nSi no, se organizarán todos los archivos en carpetas con el nombre de la extensión."
+            "\n(e.g PNG, PDF, etc.)"
+        )
+
+        # Checkbox mover o copiar
+        checkbox_move = Checkbutton(checkbox_frame,
+                                    text="Mover Archivos",
+                                    variable=move_check,
+                                    onvalue=True, offvalue=False)
+        checkbox_move.pack(anchor="w")
+        Tooltip(
+            checkbox_move,
+            "Si seleccionas esta opción, se moverán los archivos a la carpeta de destino."
+            "\n\nSi no, se copiarán los archivos a la carpeta de destino, sin alterar los archivos originales."
+        )
+
+        # Checkbox abrir al finalizar
+        checkbox_open = Checkbutton(checkbox_frame,
+                                    text="Abrir al finalizar",
+                                    variable=self.open_when_done,
+                                    onvalue=True, offvalue=False)
+        checkbox_open.pack(anchor="w")
+
+        # Listado de categorias (columna 1)
+        categories_treeview = ttk.Treeview(
+            config_container, height=10, style="Treeview")
+        categories_treeview.grid(row=0, column=1, sticky="nsew", padx=5, pady=5) # sticky "nsew" para que se expanda en todas direcciones
+        categories_treeview.column("#0", minwidth=100, stretch=True)
+        categories_treeview.heading("#0", text="Categorías")
+        populate_categories_treeview(categories_treeview)
+
+        # Asociar la función de selección al evento <<TreeviewSelect>>
+        categories_treeview.bind("<<TreeviewSelect>>", on_category_select)
+
+        # Treeview para extensiones (columna 2)
+        extensions_treeview = ttk.Treeview(
+            config_container, height=10, style="Treeview")
+        extensions_treeview.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
+        extensions_treeview.column("#0", minwidth=100, stretch=True)
+        extensions_treeview.heading("#0", text="Extensiones asignadas")
+
+        #! Demás contenido
         # Etiquetas de ruta
         origin_tag = Label(self.frame, text="🛈 Ninguna ruta de origen seleccionada",
                            wraplength=600)
@@ -304,4 +388,4 @@ class MoveFiles:
         # Etiqueta de estado
         progress_label = Label(self.frame, text="Estado: Esperando acción...",
                                bg="#FBFEF9", fg="#495057", font=("Segoe UI Emoji", 10, "italic"))
-        progress_label.pack()
+        progress_label.pack(pady=(0, 20))
