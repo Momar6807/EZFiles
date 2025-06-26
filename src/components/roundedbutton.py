@@ -108,7 +108,7 @@ import customtkinter as ctk
 
 
 class RoundedButton(ctk.CTkButton):
-    def __init__(self, master=None, variant="primary", **kwargs):
+    def __init__(self, master=None, variant="primary", width=200, height=40, **kwargs):
         # Configuración de apariencia general de CustomTkinter
         ctk.set_appearance_mode("system")  # Puedes cambiar a "light" o "dark"
         ctk.set_default_color_theme("blue")  # Temas: blue, green, dark-blue
@@ -122,7 +122,7 @@ class RoundedButton(ctk.CTkButton):
             "border_width": 1,
             "text_color": ("#ffffff", "#ffffff"),
             "hover": True,
-            "width": 200, "height": 40,
+            "width": width, "height": height,
         }
 
         # Configuraciones específicas por variante
