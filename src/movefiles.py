@@ -41,9 +41,9 @@ class MoveFiles:
                 "Ejecutables": ['.exe', '.msi', '.bat'],
                 "Archivos comprimidos": ['.zip', '.rar', '.7z'],
                 "Código fuente y Scripts": ['.py', '.js', '.html', '.css', '.json',
-                                             '.php', '.java', '.lua', '.r', '.c', '.cpp', '.cs',
-                                             '.go', '.swift', '.kt', '.kts', '.csx', '.csproj',
-                                             '.ino', '.asm', '.h', '.cob', '.jsx', '.ts', '.tsx', '.dart', '.e', '.f'],
+                                            '.php', '.java', '.lua', '.r', '.c', '.cpp', '.cs',
+                                            '.go', '.swift', '.kt', '.kts', '.csx', '.csproj',
+                                            '.ino', '.asm', '.h', '.cob', '.jsx', '.ts', '.tsx', '.dart', '.e', '.f'],
                 "Otros": []  # La categoría "Otros" no necesita extensiones predefinidas
             }
             with open("saved_categories.json", "w") as f:
@@ -244,7 +244,8 @@ class MoveFiles:
 
         def save_categories():
             with open("saved_categories.json", "w") as f:
-                json.dump(self.categories, f, indent=4) # Añadido indent para mejor legibilidad del JSON
+                # Añadido indent para mejor legibilidad del JSON
+                json.dump(self.categories, f, indent=4)
 
         def delete_category(event):
             # Obtener el ítem seleccionado con el clic derecho
@@ -258,31 +259,37 @@ class MoveFiles:
                     del self.categories[category_name]
                     save_categories()
                     populate_categories_treeview(categories_treeview)
-                    populate_extensions_treeview(extensions_treeview, None) # Limpiar extensiones al eliminar categoría
+                    # Limpiar extensiones al eliminar categoría
+                    populate_extensions_treeview(extensions_treeview, None)
             else:
-                messagebox.showwarning("Advertencia", "No se pudo encontrar la categoría seleccionada.")
+                messagebox.showwarning(
+                    "Advertencia", "No se pudo encontrar la categoría seleccionada.")
 
         def delete_extension(event):
             selected_extension_id = extensions_treeview.identify_row(event.y)
             if not selected_extension_id:
                 return
 
-            extension_name = extensions_treeview.item(selected_extension_id)['text']
+            extension_name = extensions_treeview.item(
+                selected_extension_id)['text']
             selected_category_id = categories_treeview.selection()
             if not selected_category_id:
-                messagebox.showwarning("Advertencia", "Selecciona primero una categoría.")
+                messagebox.showwarning(
+                    "Advertencia", "Selecciona primero una categoría.")
                 return
-            
-            category_name = categories_treeview.item(selected_category_id[0])['text']
+
+            category_name = categories_treeview.item(
+                selected_category_id[0])['text']
 
             if category_name in self.categories and extension_name in self.categories[category_name]:
                 if messagebox.askyesno("Eliminar Extensión", f"¿Estás seguro de que quieres eliminar la extensión '{extension_name}' de la categoría '{category_name}'?"):
                     self.categories[category_name].remove(extension_name)
                     save_categories()
-                    populate_extensions_treeview(extensions_treeview, category_name)
+                    populate_extensions_treeview(
+                        extensions_treeview, category_name)
             else:
-                messagebox.showwarning("Advertencia", "No se pudo encontrar la extensión o categoría seleccionada.")
-
+                messagebox.showwarning(
+                    "Advertencia", "No se pudo encontrar la extensión o categoría seleccionada.")
 
         def populate_categories_treeview(widget):
             # Limpiar el treeview antes de poblarlo
@@ -295,35 +302,36 @@ class MoveFiles:
                     text=category,
                     iid=category
                 )
-        
+
         def populate_extensions_treeview(widget, category):
             # Limpiar el treeview de extensiones antes de poblarlo
             for i in widget.get_children():
                 widget.delete(i)
-            
+
             if category and category in self.categories:
                 for extension in self.categories[category]:
                     widget.insert(
-                            "", # Parent item
-                            "end",
-                            text=extension,
-                            iid=extension,
+                        "",  # Parent item
+                        "end",
+                        text=extension,
+                        iid=extension,
                     )
-        
+
         # Función para manejar la selección de una categoría
         def on_category_select(event):
             selected_item = categories_treeview.selection()
             if selected_item:
-                category_name = categories_treeview.item(selected_item[0])['text']
-                populate_extensions_treeview(extensions_treeview, category_name)
-
+                category_name = categories_treeview.item(selected_item[0])[
+                    'text']
+                populate_extensions_treeview(
+                    extensions_treeview, category_name)
 
         ############## Creacion de los componentes ################
         move_check = tk.BooleanVar()
 
         # Heading
         heading = tk.Label(self.frame, text="Organizar Archivos", font=("Segoe UI Emoji", 16, "bold"),
-                               bg="#FBFEF9", fg="#343a40")
+                           bg="#FBFEF9", fg="#343a40")
         heading.pack(pady=(20, 10))
 
         # Frame de botones
@@ -332,35 +340,37 @@ class MoveFiles:
 
         # Botón origen
         origin_btn = Button(button_frame,
-                                 text="📁 Carpeta de Origen",
-                                 command=lambda: select_dir("origin"),
-                                 variant="primary")
+                            text="📁 Carpeta de Origen",
+                            command=lambda: select_dir("origin"),
+                            variant="primary")
         origin_btn.grid(row=0, column=0, padx=10)
 
         # Botón destino
         destination_btn = Button(button_frame, text="📂 Carpeta de Destino",
-                                     command=lambda: select_dir("destination"),
-                                     variant="success")
+                                 command=lambda: select_dir("destination"),
+                                 variant="success")
         destination_btn.grid(row=0, column=1, padx=10)
 
         # Botón mover
         move_btn = Button(button_frame, text="🚀 Comenzar",
-                               command=move_files,
-                               variant="warning")
+                          command=move_files,
+                          variant="warning")
         move_btn.grid(row=0, column=2, padx=10)
 
         # Contenedor para configuraciones (checkboxes y treeviews)
         config_container = tk.Frame(self.frame, bg="#FBFEF9")
-        config_container.pack(pady=10, padx=10, fill="both", expand=True) # expand y fill para que use el espacio disponible
-        
+        config_container.pack(pady=10, padx=10, fill="both", expand=True)
+
         # Configurar las columnas para que distribuyan el espacio
-        config_container.grid_columnconfigure(0, weight=1) # Checkboxes
-        config_container.grid_columnconfigure(1, weight=2) # Treeview de categorías
-        config_container.grid_columnconfigure(2, weight=2) # Treeview de extensiones
+        config_container.grid_columnconfigure(0, weight=1)  # Checkboxes
+        config_container.grid_columnconfigure(
+            1, weight=2)  # Treeview de categorías
+        config_container.grid_columnconfigure(
+            2, weight=2)  # Treeview de extensiones
 
         # Frame para los checkboxes (columna 0)
         checkbox_frame = tk.Frame(config_container, bg="#FBFEF9")
-        checkbox_frame.grid(row=0, column=0, sticky="nw", padx=10, pady=5) # sticky para alinear a la esquina superior izquierda
+        checkbox_frame.grid(row=0, column=0, sticky="nw", padx=10, pady=5)
 
         # Checkbox para incluir categorías
         checkbox_include_categories = Checkbutton(
@@ -370,7 +380,7 @@ class MoveFiles:
             onvalue=True,
             offvalue=False,
         )
-        checkbox_include_categories.pack(anchor="w") # anchor "w" para alinear a la izquierda
+        checkbox_include_categories.pack(anchor="w")
         Tooltip(
             checkbox_include_categories,
             "Si seleccionas esta opción, se organizarán los archivos en carpetas por categoría."
@@ -380,9 +390,9 @@ class MoveFiles:
 
         # Checkbox mover o copiar
         checkbox_move = Checkbutton(checkbox_frame,
-                                         text="Mover Archivos",
-                                         variable=move_check,
-                                         onvalue=True, offvalue=False)
+                                    text="Mover Archivos",
+                                    variable=move_check,
+                                    onvalue=True, offvalue=False)
         checkbox_move.pack(anchor="w")
         Tooltip(
             checkbox_move,
@@ -392,51 +402,81 @@ class MoveFiles:
 
         # Checkbox abrir al finalizar
         checkbox_open = Checkbutton(checkbox_frame,
-                                         text="Abrir al finalizar",
-                                         variable=self.open_when_done,
-                                         onvalue=True, offvalue=False)
+                                    text="Abrir al finalizar",
+                                    variable=self.open_when_done,
+                                    onvalue=True, offvalue=False)
         checkbox_open.pack(anchor="w")
-        
+
         # Texto para indicar como eliminar
         delete_text = tk.Label(
             config_container,
-            text="🛈 Click derecho en una categoría o extensión para eliminarla",
+            text="🛈 Haz clic derecho en una categoría o extensión para eliminarla",  # Texto actualizado
             bg="#FBFEF9",
             fg="#343a40",
             font=("Segoe UI Emoji", 10),
         )
         delete_text.grid(row=1, column=1, columnspan=2, pady=1)
-        #! Listado de categorias (columna 1)
+
+        # --- Contenedor para Treeview de Categorías y Scrollbar ---
+        category_tree_frame = tk.Frame(config_container, bg="#FBFEF9")
+        category_tree_frame.grid(
+            row=0, column=1, sticky="nsew", padx=5, pady=5)
+        # Permite que el treeview se expanda verticalmente
+        category_tree_frame.grid_rowconfigure(0, weight=1)
+        # Permite que el treeview se expanda horizontalmente
+        category_tree_frame.grid_columnconfigure(0, weight=1)
+
+        # Treeview para categorías
         categories_treeview = ttk.Treeview(
-            config_container, height=10, style="Treeview")
-        categories_treeview.grid(row=0, column=1, sticky="nsew", padx=5, pady=5) # sticky "nsew" para que se expanda en todas direcciones
+            category_tree_frame, height=10, style="Treeview")
+        categories_treeview.grid(row=0, column=0, sticky="nsew")
         categories_treeview.column("#0", minwidth=100, stretch=True)
         categories_treeview.heading("#0", text="Categorías")
         populate_categories_treeview(categories_treeview)
+
+        # Scrollbar para categorías
+        category_scrollbar = ttk.Scrollbar(
+            category_tree_frame, orient="vertical", command=categories_treeview.yview)
+        category_scrollbar.grid(row=0, column=1, sticky="ns")
+        categories_treeview.config(yscrollcommand=category_scrollbar.set)
 
         # Asociar la función de selección al evento <<TreeviewSelect>>
         categories_treeview.bind("<<TreeviewSelect>>", on_category_select)
         # Asociar la función de eliminar categoría al clic derecho
         categories_treeview.bind("<Button-3>", delete_category)
 
-        #! Treeview para extensiones (columna 2)
+        # --- Contenedor para Treeview de Extensiones y Scrollbar ---
+        extension_tree_frame = tk.Frame(config_container, bg="#FBFEF9")
+        extension_tree_frame.grid(
+            row=0, column=2, sticky="nsew", padx=5, pady=5)
+        # Permite que el treeview se expanda verticalmente
+        extension_tree_frame.grid_rowconfigure(0, weight=1)
+        # Permite que el treeview se expanda horizontalmente
+        extension_tree_frame.grid_columnconfigure(0, weight=1)
+
+        # Treeview para extensiones
         extensions_treeview = ttk.Treeview(
-            config_container, height=10, style="Treeview")
-        extensions_treeview.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
+            extension_tree_frame, height=10, style="Treeview")
+        extensions_treeview.grid(row=0, column=0, sticky="nsew")
         extensions_treeview.column("#0", minwidth=100, stretch=True)
         extensions_treeview.heading("#0", text="Extensiones asignadas")
         # Asociar la función de eliminar extensión al clic derecho
         extensions_treeview.bind("<Button-3>", delete_extension)
 
+        # Scrollbar para extensiones
+        extension_scrollbar = ttk.Scrollbar(
+            extension_tree_frame, orient="vertical", command=extensions_treeview.yview)
+        extension_scrollbar.grid(row=0, column=1, sticky="ns")
+        extensions_treeview.config(yscrollcommand=extension_scrollbar.set)
 
         #! Demás contenido
         # Etiquetas de ruta
         origin_tag = Label(self.frame, text="🛈 Ninguna ruta de origen seleccionada",
-                               wraplength=600)
+                           wraplength=600)
         origin_tag.pack(pady=(20, 5))
 
         destination_tag = Label(self.frame, text="🛈 Ninguna ruta de destino seleccionada",
-                                 wraplength=600)
+                                wraplength=600)
         destination_tag.pack(pady=5)
 
         # Barra de progreso
@@ -446,5 +486,5 @@ class MoveFiles:
 
         # Etiqueta de estado
         progress_label = Label(self.frame, text="Estado: Esperando acción...",
-                                 bg="#FBFEF9", fg="#495057", font=("Segoe UI Emoji", 10, "italic"))
+                               bg="#FBFEF9", fg="#495057", font=("Segoe UI Emoji", 10, "italic"))
         progress_label.pack(pady=(0, 20))
