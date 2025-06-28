@@ -1,14 +1,18 @@
 import subprocess
 import tkinter as tk
+import customtkinter as ctk
 from tkinter import filedialog, messagebox, ttk
 import sys
 import os
 import shutil
 import threading
+from tkinter import simpledialog
+from components.modal import Modal
 from components.roundedbutton import RoundedButton as Button
 from components.label import Label
 from components.checkbutton import Checkbutton
 from components.tooltip import Tooltip
+from components.table import Table
 import json
 
 
@@ -317,15 +321,6 @@ class MoveFiles:
                         iid=extension,
                     )
 
-        # Función para manejar la selección de una categoría
-        def on_category_select(event):
-            selected_item = categories_treeview.selection()
-            if selected_item:
-                category_name = categories_treeview.item(selected_item[0])[
-                    'text']
-                populate_extensions_treeview(
-                    extensions_treeview, category_name)
-
         ############## Creacion de los componentes ################
         move_check = tk.BooleanVar()
 
@@ -410,79 +405,95 @@ class MoveFiles:
         # Texto para indicar como eliminar
         delete_text = tk.Label(
             config_container,
-            text="🛈 Haz clic derecho en una categoría o extensión para eliminarla",  # Texto actualizado
+            text="🛈 Para agregar categorias o extensiones, ingresa el nombre en el buscador y presiona enter" \
+                "\n🛈 Para eliminar, haz click en un elemento y presiona el botón para eliminar",  # Texto actualizado
             bg="#FBFEF9",
             fg="#343a40",
             font=("Segoe UI Emoji", 10),
         )
         delete_text.grid(row=1, column=1, columnspan=2, pady=1)
 
-        # --- Contenedor para Treeview de Categorías y Scrollbar ---
-        category_tree_frame = tk.Frame(config_container, bg="#FBFEF9")
-        category_tree_frame.grid(
-            row=0, column=1, sticky="nsew", padx=5, pady=5)
-        # Permite que el treeview se expanda verticalmente
-        category_tree_frame.grid_rowconfigure(0, weight=1)
-        # Permite que el treeview se expanda horizontalmente
-        category_tree_frame.grid_columnconfigure(0, weight=1)
+       # Contenedor para las dos tablas (categorías y extensiones)
+        tables_frame = ctk.CTkFrame(config_container, fg_color="white")
+        tables_frame.grid(row=0, column=1, columnspan=2, sticky="nsew", padx=5, pady=5)
 
-        # Treeview para categorías
-        categories_treeview = ttk.Treeview(
-            category_tree_frame, height=10, style="Treeview")
-        categories_treeview.grid(row=0, column=0, sticky="nsew")
-        categories_treeview.column("#0", minwidth=100, stretch=True)
-        categories_treeview.heading("#0", text="Categorías")
-        populate_categories_treeview(categories_treeview)
+        # Variable para rastrear categoría seleccionada
+        selected_category = {"name": None}
 
-        # Scrollbar para categorías
-        category_scrollbar = ttk.Scrollbar(
-            category_tree_frame, orient="vertical", command=categories_treeview.yview)
-        category_scrollbar.grid(row=0, column=1, sticky="ns")
-        categories_treeview.config(yscrollcommand=category_scrollbar.set)
+        # Función para actualizar extensiones
+        def update_extensions_table(category):
+            selected_category["name"] = category
+            extensions = self.categories.get(category, [])
+            extensions_table.data = extensions.copy()
+            extensions_table.filtered_data = extensions.copy()
+            extensions_table.selected_index = None
+            extensions_table.build_table()
 
-        # Asociar la función de selección al evento <<TreeviewSelect>>
-        categories_treeview.bind("<<TreeviewSelect>>", on_category_select)
-        # Asociar la función de eliminar categoría al clic derecho
-        categories_treeview.bind("<Button-3>", delete_category)
+        # Función para manejar eliminación de categoría
+        def on_delete_category(item):
+            if item in self.categories:
+                if messagebox.askyesno("Eliminar Categoría", f"¿Eliminar la categoría '{item}'?"):
+                    del self.categories[item]
+                    save_categories()
+                    categories_table.data.remove(item)
+                    categories_table.filtered_data.remove(item)
+                    categories_table.build_table()
+                    update_extensions_table(None)
 
-        # --- Contenedor para Treeview de Extensiones y Scrollbar ---
-        extension_tree_frame = tk.Frame(config_container, bg="#FBFEF9")
-        extension_tree_frame.grid(
-            row=0, column=2, sticky="nsew", padx=5, pady=5)
-        # Permite que el treeview se expanda verticalmente
-        extension_tree_frame.grid_rowconfigure(0, weight=1)
-        # Permite que el treeview se expanda horizontalmente
-        extension_tree_frame.grid_columnconfigure(0, weight=1)
+        # Función para manejar eliminación de extensión
+        def on_delete_extension(item):
+            category = selected_category["name"]
+            if not category:
+                return
+            if item in self.categories.get(category, []):
+                if messagebox.askyesno("Eliminar Extensión", f"¿Eliminar la extensión '{item}' de '{category}'?"):
+                    self.categories[category].remove(item)
+                    save_categories()
+                    update_extensions_table(category)
 
-        # Treeview para extensiones
-        extensions_treeview = ttk.Treeview(
-            extension_tree_frame, height=10, style="Treeview")
-        extensions_treeview.grid(row=0, column=0, sticky="nsew")
-        extensions_treeview.column("#0", minwidth=100, stretch=True)
-        extensions_treeview.heading("#0", text="Extensiones asignadas")
-        # Asociar la función de eliminar extensión al clic derecho
-        extensions_treeview.bind("<Button-3>", delete_extension)
+        # Tabla de categorías
+        categories_table = Table(
+            tables_frame,
+            headers=["Categorías"],
+            data=list(self.categories.keys()),
+            on_select=update_extensions_table,
+            allow_add_new=True,
+            allow_delete=True,
+            input_text="Buscar categoría..."
+        )
+        categories_table.pack(side="left", expand=True, fill="both", padx=(0, 10))
 
-        # Scrollbar para extensiones
-        extension_scrollbar = ttk.Scrollbar(
-            extension_tree_frame, orient="vertical", command=extensions_treeview.yview)
-        extension_scrollbar.grid(row=0, column=1, sticky="ns")
-        extensions_treeview.config(yscrollcommand=extension_scrollbar.set)
+        # Tabla de extensiones
+        extensions_table = Table(
+            tables_frame,
+            headers=["Extensiones",],
+            data=[],
+            on_select=None,
+            allow_add_new=True,
+            allow_delete=True,
+            input_text="Buscar extensión..."
+        )
+        extensions_table.pack(side="left", expand=True, fill="both", padx=(10, 0))
+
+        # Conectar eliminaciones
+        categories_table.on_delete = on_delete_category
+        extensions_table.on_delete = on_delete_extension
+
 
         #! Demás contenido
         # Etiquetas de ruta
         origin_tag = Label(self.frame, text="🛈 Ninguna ruta de origen seleccionada",
                            wraplength=600)
-        origin_tag.pack(pady=(20, 5))
+        origin_tag.pack(pady=(5, 5))
 
         destination_tag = Label(self.frame, text="🛈 Ninguna ruta de destino seleccionada",
                                 wraplength=600)
-        destination_tag.pack(pady=5)
+        destination_tag.pack(pady=0)
 
         # Barra de progreso
         progress = ttk.Progressbar(
             self.frame, orient="horizontal", length=600, mode="determinate")
-        progress.pack(pady=(20, 5))
+        progress.pack(pady=5)
 
         # Etiqueta de estado
         progress_label = Label(self.frame, text="Estado: Esperando acción...",

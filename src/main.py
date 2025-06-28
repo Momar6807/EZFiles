@@ -23,7 +23,7 @@ import pystray
 from PIL import Image
 from movefiles import MoveFiles
 from sidebar import Sidebar
-
+from utils.icon import resource_path
 # Crear la ventana principal
 ventana = tk.Tk()
 ventana.title("EZFiles")
@@ -34,14 +34,6 @@ ventana.minsize(1000, 650)
 # icono
 # Para poner el icono a la aplicacion, sin depender del archivo independiente
 
-
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
 
 
 
