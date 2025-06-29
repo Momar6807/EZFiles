@@ -3,13 +3,15 @@ from components.forminput import FormInput
 
 
 class Table(ctk.CTkFrame):
-    def __init__(self, parent, data=None, on_select=None, headers=("Nombre",),
+    def __init__(self, parent, data=None, on_select=None, on_add=None, on_delete=None, headers=("Nombre",),
                  allow_add_new=True, allow_delete=True, input_text="Buscar..."):
         super().__init__(parent, fg_color="#fff")
 
         self.data = data or []
         self.filtered_data = self.data.copy()
         self.on_select = on_select
+        self.on_add = on_add
+        self.on_delete = on_delete
         self.headers = headers
         self.allow_add_new = allow_add_new
         self.allow_delete = allow_delete
@@ -44,7 +46,8 @@ class Table(ctk.CTkFrame):
             widget.destroy()
 
         # Header
-        header = ctk.CTkFrame(self.scroll_frame, fg_color="#f2f2f2", corner_radius=12)
+        header = ctk.CTkFrame(
+            self.scroll_frame, fg_color="#f2f2f2", corner_radius=12)
         header.pack(fill='x', pady=(0, 6))
 
         for col_index, col_name in enumerate(self.headers):
@@ -56,13 +59,13 @@ class Table(ctk.CTkFrame):
             )
             label.grid(row=0, column=col_index, sticky="w", padx=10, pady=6)
 
-        # Filas
+        # Filas de datos
         if self.filtered_data:
             for idx, item in enumerate(self.filtered_data):
-                row = ctk.CTkFrame(self.scroll_frame, corner_radius=8, fg_color="#ffffff")
+                row = ctk.CTkFrame(self.scroll_frame,
+                                   corner_radius=8, fg_color="#ffffff")
                 row.pack(fill='x', pady=4)
 
-                # Suponiendo que cada item es texto simple
                 cell = ctk.CTkLabel(
                     row,
                     text=item,
@@ -75,13 +78,31 @@ class Table(ctk.CTkFrame):
                 row.bind("<Button-1>", lambda e, i=idx: self.select_row(i))
                 cell.bind("<Button-1>", lambda e, i=idx: self.select_row(i))
 
+        # Hint row for adding new items
+        if self.allow_add_new:
+            query = self.input.get().strip()
+            # Only show hint if there's something typed and it's not already in data
+            if query and query.lower() not in [d.lower() for d in self.data]:
+                hint_row = ctk.CTkFrame(
+                    self.scroll_frame, corner_radius=8, fg_color="#f0f0f0")  # Lighter background
+                hint_row.pack(fill='x', pady=4)
+
+                hint_label = ctk.CTkLabel(
+                    hint_row,
+                    text=f"Presiona Enter para agregar '{query}\"",
+                    anchor="w",
+                    font=("Segoe UI Emoji", 12, "italic"),  # Italic font
+                    text_color="#888888"  # Greyed out text
+                )
+                hint_label.pack(fill='x', padx=10, pady=6)
+                # Do NOT bind select_row to the hint row, it's not selectable
 
     def on_key_release(self, event):
         query = self.input.get().strip().lower()
         self.filtered_data = [
             item for item in self.data if query in item.lower()]
         self.selected_index = None
-        self.build_table()
+        self.build_table()  # Rebuild table to show/hide hint row
 
     def on_enter(self, event):
         if not self.allow_add_new:
@@ -91,8 +112,12 @@ class Table(ctk.CTkFrame):
         if query and query not in self.data:
             self.data.append(query)
             self.input.delete(0, 'end')
-            self.filtered_data = [
-                item for item in self.data if query.lower() in item.lower()]
+            # After adding, clear the filter and rebuild to show all data including new item
+            self.filtered_data = self.data.copy()
+            self.build_table()
+            if self.on_add:
+                self.on_add(query)
+        else:  # If query is empty or item already exists, still rebuild to clear hint
             self.build_table()
 
     def select_row(self, index):
@@ -101,7 +126,13 @@ class Table(ctk.CTkFrame):
         # skip header
         for idx, row in enumerate(self.scroll_frame.winfo_children()[1:]):
             color = "#e0eaff" if idx == index else "#ffffff"
-            row.configure(fg_color=color)
+            # Ensure we don't try to configure the hint row if it exists at the end
+            # and it's not the one selected (which it shouldn't be).
+            # This relies on the hint row being the last element if present.
+            if len(self.filtered_data) > idx:  # Only apply selection color to data rows
+                row.configure(fg_color=color)
+            else:  # This is potentially the hint row
+                row.configure(fg_color="#f0f0f0")  # Reset its color
 
         if self.on_select:
             try:
@@ -120,28 +151,12 @@ class Table(ctk.CTkFrame):
     def delete_selected(self):
         selected = self.get_selected()
         if selected and selected in self.data:
-            self.data.remove(selected)
-            self.filtered_data.remove(selected)
-            self.selected_index = None
-            self.build_table()
-
-
-if __name__ == "__main__":
-    def on_item_selected(item):
-        print("Seleccionado:", item)
-
-    ctk.set_appearance_mode("light")
-    ctk.set_default_color_theme("blue")
-
-    root = ctk.CTk()
-    root.geometry("500x500")
-    root.title("Tabla Visual Clara")
-
-    frame = ctk.CTkFrame(root)
-    frame.pack(fill="both", expand=True, padx=20, pady=20)
-
-    tabla = Table(frame, data=["Manzana", "Banana",
-                  "Cereza"], on_select=on_item_selected)
-    tabla.pack(fill='both', expand=True)
-
-    root.mainloop()
+            if self.on_delete:
+                self.on_delete(selected)
+            else:
+                self.data.remove(selected)
+                self.filtered_data.remove(selected)
+                self.selected_index = None
+                self.build_table()
+        # Rebuild table to update hint row visibility after deletion
+        self.build_table()

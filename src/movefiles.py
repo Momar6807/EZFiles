@@ -51,7 +51,7 @@ class MoveFiles:
                 "Otros": []  # La categoría "Otros" no necesita extensiones predefinidas
             }
             with open("saved_categories.json", "w") as f:
-                json.dump(self.categories, f)
+                json.dump(self.categories, f, indent=4) # Added indent for readability
 
     def render(self):
 
@@ -251,75 +251,29 @@ class MoveFiles:
                 # Añadido indent para mejor legibilidad del JSON
                 json.dump(self.categories, f, indent=4)
 
-        def delete_category(event):
-            # Obtener el ítem seleccionado con el clic derecho
-            selected_item_id = categories_treeview.identify_row(event.y)
-            if not selected_item_id:
-                return
+        # New function for adding categories
+        def on_add_category(category_name):
+            if category_name not in self.categories:
+                self.categories[category_name] = []
+                save_categories()
+                # Rebuild the table to reflect the new data from self.categories
+                categories_table.data = list(self.categories.keys())
+                categories_table.filtered_data = list(self.categories.keys())
+                categories_table.build_table()
+                messagebox.showinfo("Info", f"Categoría '{category_name}' agregada.")
 
-            category_name = categories_treeview.item(selected_item_id)['text']
-            if category_name in self.categories:
-                if messagebox.askyesno("Eliminar Categoría", f"¿Estás seguro de que quieres eliminar la categoría '{category_name}'?"):
-                    del self.categories[category_name]
-                    save_categories()
-                    populate_categories_treeview(categories_treeview)
-                    # Limpiar extensiones al eliminar categoría
-                    populate_extensions_treeview(extensions_treeview, None)
-            else:
-                messagebox.showwarning(
-                    "Advertencia", "No se pudo encontrar la categoría seleccionada.")
+        # New function for adding extensions
+        def on_add_extension(extension_name):
+            category = selected_category["name"]
+            if category and extension_name not in self.categories.get(category, []):
+                self.categories[category].append(extension_name)
+                save_categories()
+                # Rebuild the extensions table
+                update_extensions_table(category)
+                messagebox.showinfo("Info", f"Extensión '{extension_name}' agregada a '{category}'.")
+            elif not category:
+                messagebox.showwarning("Advertencia", "Selecciona una categoría primero para agregar una extensión.")
 
-        def delete_extension(event):
-            selected_extension_id = extensions_treeview.identify_row(event.y)
-            if not selected_extension_id:
-                return
-
-            extension_name = extensions_treeview.item(
-                selected_extension_id)['text']
-            selected_category_id = categories_treeview.selection()
-            if not selected_category_id:
-                messagebox.showwarning(
-                    "Advertencia", "Selecciona primero una categoría.")
-                return
-
-            category_name = categories_treeview.item(
-                selected_category_id[0])['text']
-
-            if category_name in self.categories and extension_name in self.categories[category_name]:
-                if messagebox.askyesno("Eliminar Extensión", f"¿Estás seguro de que quieres eliminar la extensión '{extension_name}' de la categoría '{category_name}'?"):
-                    self.categories[category_name].remove(extension_name)
-                    save_categories()
-                    populate_extensions_treeview(
-                        extensions_treeview, category_name)
-            else:
-                messagebox.showwarning(
-                    "Advertencia", "No se pudo encontrar la extensión o categoría seleccionada.")
-
-        def populate_categories_treeview(widget):
-            # Limpiar el treeview antes de poblarlo
-            for i in widget.get_children():
-                widget.delete(i)
-            for category in self.categories:
-                widget.insert(
-                    "",
-                    "end",
-                    text=category,
-                    iid=category
-                )
-
-        def populate_extensions_treeview(widget, category):
-            # Limpiar el treeview de extensiones antes de poblarlo
-            for i in widget.get_children():
-                widget.delete(i)
-
-            if category and category in self.categories:
-                for extension in self.categories[category]:
-                    widget.insert(
-                        "",  # Parent item
-                        "end",
-                        text=extension,
-                        iid=extension,
-                    )
 
         ############## Creacion de los componentes ################
         move_check = tk.BooleanVar()
@@ -435,10 +389,11 @@ class MoveFiles:
                 if messagebox.askyesno("Eliminar Categoría", f"¿Eliminar la categoría '{item}'?"):
                     del self.categories[item]
                     save_categories()
-                    categories_table.data.remove(item)
-                    categories_table.filtered_data.remove(item)
+                    # Rebuild both tables to reflect the change
+                    categories_table.data = list(self.categories.keys())
+                    categories_table.filtered_data = list(self.categories.keys())
                     categories_table.build_table()
-                    update_extensions_table(None)
+                    update_extensions_table(None) # Clear extensions table as category is deleted
 
         # Función para manejar eliminación de extensión
         def on_delete_extension(item):
@@ -457,6 +412,8 @@ class MoveFiles:
             headers=["Categorías"],
             data=list(self.categories.keys()),
             on_select=update_extensions_table,
+            on_add=on_add_category, # Pass the new on_add_category function
+            on_delete=on_delete_category, # Pass the new on_delete_category function
             allow_add_new=True,
             allow_delete=True,
             input_text="Buscar categoría..."
@@ -469,15 +426,17 @@ class MoveFiles:
             headers=["Extensiones",],
             data=[],
             on_select=None,
+            on_add=on_add_extension, # Pass the new on_add_extension function
+            on_delete=on_delete_extension, # Pass the new on_delete_extension function
             allow_add_new=True,
             allow_delete=True,
             input_text="Buscar extensión..."
         )
         extensions_table.pack(side="left", expand=True, fill="both", padx=(10, 0))
 
-        # Conectar eliminaciones
-        categories_table.on_delete = on_delete_category
-        extensions_table.on_delete = on_delete_extension
+        # No need to explicitly connect `on_delete` here anymore as it's passed in the constructor.
+        # categories_table.on_delete = on_delete_category
+        # extensions_table.on_delete = on_delete_extension
 
 
         #! Demás contenido
