@@ -1,3 +1,8 @@
 build/
 dist/
 src/EZFiles.spec
+src/installer_config.ifp
+*.pyc
+fonts.py
+saved_categories.json
+src/components/test.py

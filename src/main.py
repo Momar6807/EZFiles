@@ -15,12 +15,15 @@
     """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
+import threading
 import os
 import sys
+import pystray
+from PIL import Image
 from movefiles import MoveFiles
 from sidebar import Sidebar
-
+from utils.icon import resource_path
 # Crear la ventana principal
 ventana = tk.Tk()
 ventana.title("EZFiles")
@@ -32,20 +35,46 @@ ventana.minsize(1000, 650)
 # Para poner el icono a la aplicacion, sin depender del archivo independiente
 
 
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
 
-    return os.path.join(base_path, relative_path)
 
+def minimize_to_tray():
+    ventana.withdraw()
+
+def exit_app():
+    tray.stop()
+    ventana.destroy()
+    sys.exit(0)
+
+
+def show_window():
+    ventana.deiconify()
+
+
+def confirm_exit(self):
+    if messagebox.askyesno("Salir", "¿Estás seguro de que quieres salir?"):
+        self.exit_app()
 
 ventana.iconbitmap(resource_path('icono.ico'))
 # ventana.iconbitmap('icono.ico')
 # try:
 # except:
 # pass
+
+
+# Configurar el tray
+ventana.protocol("WM_DELETE_WINDOW", minimize_to_tray)
+tray_icon = Image.open(resource_path('icono.ico'))
+
+menu = pystray.Menu(
+    # pystray.MenuItem('Abrir', lambda: minimize_to_tray()),
+    pystray.MenuItem('Mostrar', lambda: show_window(), default=True),
+    pystray.MenuItem('Salir', lambda: exit_app())
+)
+
+tray = pystray.Icon("EZFiles", tray_icon, "EZFiles", menu)
+
+tray_thread = threading.Thread(target=lambda: tray.run(), daemon=True)
+tray_thread.start()
 
 
 # checkbox mover o copiar (False)
@@ -116,21 +145,16 @@ def selectMenuOption(option):
             page = MoveFiles(rightside)
             page.render()
 
-
 if __name__ == "__main__":
-
     # Ejecutar mostrar menu
     menu = Sidebar(
         leftside,
         options=[
             {
                 "label": "📁 Organizar Archivos",
-                "command": lambda x: selectMenuOption(x)
+                "command": lambda x: selectMenuOption(x),
+                "page": "mover"
             },
-            # {
-            #     "label": "📁 Mover Archivos",
-            #     "command": lambda x: selectMenuOption(x)
-            # },
             # {
             #     "label": "📁 Extraer y aplanar",
             #     "command": lambda x: selectMenuOption(x)

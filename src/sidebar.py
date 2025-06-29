@@ -24,4 +24,4 @@ class Sidebar:
         for option in self.options:
             Button(master=self.frame,
                    variant="info", text=option["label"],
-                   command=lambda: option["command"]("mover")).pack(pady=5, padx=5)
+                   command=lambda: option["command"](option["page"])).pack(pady=5, padx=5)
